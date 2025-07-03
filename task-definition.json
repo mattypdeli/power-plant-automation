@@ -1,0 +1,30 @@
+{
+    "family": "power-plant-automation-task",
+    "networkMode": "awsvpc",
+    "executionRoleArn": "arn:aws:iam::804373361506:role/ecsTaskExecutionRole",
+    "containerDefinitions": [
+        {
+            "name": "power-plant-container",
+            "image": "804373361506.dkr.ecr.us-east-1.amazonaws.com/power-plant-automation",
+            "portMappings": [
+                {
+                    "containerPort": 3000,
+                    "hostPort": 3000,
+                    "protocol": "tcp"
+                }
+            ],
+            "essential": true,
+            "secrets": [
+                {
+                    "name": "OPENAI_API_KEY",
+                    "valueFrom": "arn:aws:secretsmanager:us-east-1:804373361506:secret:power-plant-automation/api-keys-hCSy5p"
+                }
+            ]
+        }
+    ],
+    "requiresCompatibilities": [
+        "FARGATE"
+    ],
+    "cpu": "256",
+    "memory": "512"
+}
