@@ -5,7 +5,7 @@
     "containerDefinitions": [
         {
             "name": "power-plant-container",
-            "image": "804373361506.dkr.ecr.us-east-1.amazonaws.com/power-plant-automation",
+            "image": "804373361506.dkr.ecr.us-east-1.amazonaws.com/power-plant-automation:latest",
             "portMappings": [
                 {
                     "containerPort": 3000,
@@ -19,7 +19,15 @@
                     "name": "OPENAI_API_KEY",
                     "valueFrom": "arn:aws:secretsmanager:us-east-1:804373361506:secret:power-plant-automation/api-keys-hCSy5p"
                 }
-            ]
+            ],
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-group": "/ecs/power-plant-automation",
+                    "awslogs-region": "us-east-1",
+                    "awslogs-stream-prefix": "ecs"
+                }
+            }
         }
     ],
     "requiresCompatibilities": [
