@@ -15,4 +15,4 @@ COPY . .
 
 # Step 6: Define the default command to run when the container starts.
 # THIS IS THE CORRECTED LINE:
-CMD ["bentoml", "serve", "app:svc", "--production"]
+CMD ["bentoml", "serve", "app:MySimpleService", "--production"]
