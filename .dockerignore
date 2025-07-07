@@ -15,3 +15,6 @@ __pycache__/
 
 # Ignore local Python virtual environment
 .venv/
+
+# Ignore development tools
+sqlite3.exe
