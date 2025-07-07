@@ -12,3 +12,6 @@ __pycache__/
 
 # Ignore environment files - IMPORTANT FOR SECURITY
 .env
+
+# Ignore local Python virtual environment
+.venv/

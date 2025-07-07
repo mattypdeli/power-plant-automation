@@ -1,0 +1,8 @@
+# Ignore the local environment folder
+.venv/
+
+# Ignore the local secrets file
+.env
+
+# Ignore the local database file
+erp_database.db
