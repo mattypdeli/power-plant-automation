@@ -6,3 +6,6 @@
 
 # Ignore the local database file
 erp_database.db
+
+# Ignore development tools
+sqlite3.exe

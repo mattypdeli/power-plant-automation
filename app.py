@@ -8,12 +8,16 @@ from pydantic import BaseModel
 class Question(BaseModel):
     question: str
 
-# --- Configuration ---
-DB_FILE = "erp_database.db"
+# --- Build a reliable, absolute path to the database file ---
+# os.path.realpath(__file__) gets the path to this current script (app.py)
+# os.path.dirname() gets the directory that app.py is in
+# os.path.join() combines the directory path and the filename
+_APP_DIR = os.path.dirname(os.path.realpath(__file__))
+DB_FILE = os.path.join(_APP_DIR, "erp_database.db")
+
 client = OpenAI()
 
-# --- Database Helper Function ---
-def get_db_schema():
+def get_db_schema() -> str:
     """Returns the schema of the database as a string."""
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
@@ -34,39 +38,67 @@ def get_db_schema():
 # --- BentoML Service ---
 @bentoml.service
 class PowerPlantRAGService:
+    # Initialize the schema when the class is defined
     db_schema = get_db_schema()
 
     @bentoml.api
     def ask(self, data: Question) -> str:
         """
-        Accepts a JSON object with a "question" field and returns a SQL query.
+        Accepts a JSON object with a "question" field, executes a SQL query,
+        and returns a natural language answer.
         """
-        # 1. Augmentation: Create a prompt for the LLM
-        prompt = f"""
-        Given the following database schema:
-        ---
-        {self.db_schema}
-        ---
-        Please write a SQL query to answer the following question: "{data.question}"
-
-        Only return the SQL query.
-        """
-
-        # 2. Generation: Call the LLM to translate the question to SQL
         try:
+            # --- Step 1: Generate the SQL Query ---
+            # vvv --- THE PROMPT HAS BEEN UPDATED --- vvv
+            generation_prompt = f"""
+            Given the following database schema:
+            ---
+            {self.db_schema}
+            ---
+            Please write a SQL query to answer the following question: "{data.question}"
+            
+            IMPORTANT: When filtering on a text column like 'status', use the LOWER() function to ensure the comparison is case-insensitive. For example, use LOWER(status) = 'pending'.
+            
+            Only return the SQL query.
+            """
             completion = client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
                     {"role": "system", "content": "You are a helpful assistant that translates natural language questions into SQL queries."},
-                    {"role": "user", "content": prompt}
+                    {"role": "user", "content": generation_prompt}
                 ]
             )
-
             generated_sql = completion.choices[0].message.content
             if "```sql" in generated_sql:
                 generated_sql = generated_sql.split("```sql\n")[1].split("```")[0]
+            generated_sql = generated_sql.strip()
 
-            return generated_sql.strip()
+            # --- Step 2: Execute the SQL Query ---
+            conn = sqlite3.connect(DB_FILE)
+            cursor = conn.cursor()
+            cursor.execute(generated_sql)
+            results = cursor.fetchall()
+            column_names = [description[0] for description in cursor.description]
+            conn.close()
+
+            # --- Step 3: Synthesize a Final Answer ---
+            synthesis_prompt = f"""
+            Given the original question: "{data.question}"
+            And the following data retrieved from the database:
+            ---
+            Columns: {column_names}
+            Results: {results}
+            ---
+            Please provide a clear, concise, natural language answer.
+            """
+            final_completion = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": "You are a helpful assistant that summarizes database results into clear, natural language."},
+                    {"role": "user", "content": synthesis_prompt}
+                ]
+            )
+            return final_completion.choices[0].message.content.strip()
 
         except Exception as e:
             return f"An error occurred: {str(e)}"
