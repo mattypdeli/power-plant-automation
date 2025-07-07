@@ -1,0 +1,11 @@
+service: "app:PowerPlantRAGService"
+labels:
+  owner: durable-ai-leader
+  project: power-plant-automation
+include:
+  - "*.py"
+  - "erp_database.db"
+python:
+  packages:
+    - openai
+    - numpy
