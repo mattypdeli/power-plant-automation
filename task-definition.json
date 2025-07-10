@@ -5,7 +5,7 @@
     "containerDefinitions": [
         {
             "name": "power-plant-container",
-            "image": "804373361506.dkr.ecr.us-east-1.amazonaws.com/power-plant-automation:latest",
+            "image": "804373361506.dkr.ecr.us-east-1.amazonaws.com/power-plant-automation:pn2kmik5p6tlsaaj",
             "portMappings": [
                 {
                     "containerPort": 3000,
@@ -23,7 +23,8 @@
             "logConfiguration": {
                 "logDriver": "awslogs",
                 "options": {
-                    "awslogs-group": "/ecs/power-plant-automation",
+                    "awslogs-create-group": "true",
+                    "awslogs-group": "power-plant-automation-logs",
                     "awslogs-region": "us-east-1",
                     "awslogs-stream-prefix": "ecs"
                 }
@@ -33,6 +34,6 @@
     "requiresCompatibilities": [
         "FARGATE"
     ],
-    "cpu": "256",
-    "memory": "512"
+    "cpu": "1024",
+    "memory": "2048"
 }
