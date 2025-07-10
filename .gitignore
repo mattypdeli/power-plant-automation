@@ -9,3 +9,6 @@ erp_database.db
 
 # Ignore development tools
 sqlite3.exe
+
+# Ignore AWS-specific configuration
+task-definition.json
