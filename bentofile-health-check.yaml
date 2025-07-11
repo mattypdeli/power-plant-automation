@@ -1,0 +1,6 @@
+service: "health_check:HealthCheckService"
+labels:
+  owner: durable-ai-leader
+  project: health-check
+include:
+  - "*.py"
