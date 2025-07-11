@@ -47,4 +47,4 @@ ENV BENTOML_HOME=/home/bentoml
 EXPOSE 3000
 
 # The command to run the BentoML server
-CMD ["bentoml", "serve", "/home/bentoml/bento"]
+CMD ["bentoml", "serve", "src.app:PowerPlantRAGService", "--production"]
