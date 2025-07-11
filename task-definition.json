@@ -5,7 +5,7 @@
     "containerDefinitions": [
         {
             "name": "power-plant-container",
-            "image": "804373361506.dkr.ecr.us-east-1.amazonaws.com/power-plant-automation:t5ohsqc6fkl4kaaj",
+            "image": "804373361506.dkr.ecr.us-east-1.amazonaws.com/power-plant-automation:g5ch6vs6gcequaaj",
             "portMappings": [
                 {
                     "containerPort": 3000,
