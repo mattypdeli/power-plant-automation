@@ -1,104 +1,93 @@
+import logging
 import os
-import sqlite3
-import bentoml
-from openai import OpenAI
-from pydantic import BaseModel
+import sys
+
+# --- Configure logging to print to the console ---
+# This ensures that even the earliest messages are captured by the container's log driver.
+logging.basicConfig(stream=sys.stdout, level=logging.INFO, format="%(asctime)s %(levelname)s: %(message)s")
+
+logging.info("Starting app.py script...")
+
+try:
+    import sqlite3
+    logging.info("Successfully imported sqlite3.")
+    import bentoml
+    logging.info("Successfully imported bentoml.")
+    from openai import OpenAI
+    logging.info("Successfully imported OpenAI.")
+    from pydantic import BaseModel
+    logging.info("Successfully imported BaseModel.")
+except ImportError as e:
+    logging.error(f"Failed to import a critical library: {e}")
+    # Exit if we can't even import our core libraries
+    sys.exit(1)
+
 
 # --- Pydantic Model for Input Validation ---
 class Question(BaseModel):
     question: str
+logging.info("Pydantic 'Question' model defined.")
+
 
 # --- Build a reliable, absolute path to the database file ---
-# os.path.realpath(__file__) gets the path to this current script (app.py)
-# os.path.dirname() gets the directory that app.py is in
-# os.path.join() combines the directory path and the filename
-_APP_DIR = os.path.dirname(os.path.realpath(__file__))
-DB_FILE = os.path.join(_APP_DIR, "erp_database.db")
+try:
+    _APP_DIR = os.path.dirname(os.path.realpath(__file__))
+    DB_FILE = os.path.join(_APP_DIR, "erp_database.db")
+    logging.info(f"Database path constructed: {DB_FILE}")
+    if not os.path.exists(DB_FILE):
+        logging.warning("Database file does NOT exist at the constructed path!")
+    else:
+        logging.info("Database file confirmed to exist at the constructed path.")
+except Exception as e:
+    logging.error(f"Error constructing database path: {e}")
 
-client = OpenAI()
+
+# --- Initialize OpenAI Client ---
+try:
+    client = OpenAI()
+    logging.info("OpenAI client initialized successfully.")
+    if os.environ.get("OPENAI_API_KEY") is None:
+        logging.warning("OPENAI_API_KEY environment variable not found!")
+    else:
+        logging.info("OPENAI_API_KEY environment variable is present.")
+except Exception as e:
+    logging.error(f"Failed to initialize OpenAI client: {e}")
+
 
 def get_db_schema() -> str:
     """Returns the schema of the database as a string."""
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-    tables = cursor.fetchall()
-    schema_str = ""
-    for table_name in tables:
-        table_name = table_name[0]
-        schema_str += f"Table '{table_name}':\n"
-        cursor.execute(f"PRAGMA table_info({table_name});")
-        columns = cursor.fetchall()
-        for column in columns:
-            schema_str += f"  - {column[1]} ({column[2]})\n"
-        schema_str += "\n"
-    conn.close()
-    return schema_str
+    try:
+        logging.info(f"Executing get_db_schema() on {DB_FILE}...")
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        tables = cursor.fetchall()
+        conn.close()
+        logging.info(f"Found tables: {tables}")
+        # Return a simple string for this test; we don't need the full schema logic.
+        return "mock_schema_read_successfully"
+    except Exception as e:
+        logging.error(f"Error executing get_db_schema: {e}")
+        return "error_reading_schema"
+
 
 # --- BentoML Service ---
 @bentoml.service
 class PowerPlantRAGService:
-    # Initialize the schema when the class is defined
-    db_schema = get_db_schema()
+    logging.info("PowerPlantRAGService class is being defined.")
+
+    try:
+        db_schema = get_db_schema()
+        logging.info(f"db_schema initialized at class level with value: '{db_schema}'")
+    except Exception as e:
+        logging.error(f"Failed to initialize db_schema at class level: {e}")
+        db_schema = "initialization_failed"
+
 
     @bentoml.api
     def ask(self, data: Question) -> str:
-        """
-        Accepts a JSON object with a "question" field, executes a SQL query,
-        and returns a natural language answer.
-        """
-        try:
-            # --- Step 1: Generate the SQL Query ---
-            # vvv --- THE PROMPT HAS BEEN UPDATED --- vvv
-            generation_prompt = f"""
-            Given the following database schema:
-            ---
-            {self.db_schema}
-            ---
-            Please write a SQL query to answer the following question: "{data.question}"
-            
-            IMPORTANT: When filtering on a text column like 'status', use the LOWER() function to ensure the comparison is case-insensitive. For example, use LOWER(status) = 'pending'.
-            
-            Only return the SQL query.
-            """
-            completion = client.chat.completions.create(
-                model="gpt-4o",
-                messages=[
-                    {"role": "system", "content": "You are a helpful assistant that translates natural language questions into SQL queries."},
-                    {"role": "user", "content": generation_prompt}
-                ]
-            )
-            generated_sql = completion.choices[0].message.content
-            if "```sql" in generated_sql:
-                generated_sql = generated_sql.split("```sql\n")[1].split("```")[0]
-            generated_sql = generated_sql.strip()
+        logging.info(f"API endpoint /ask received a request. Responding with simple confirmation.")
+        # The full RAG logic is temporarily removed to focus on startup issues.
+        return f"Request processed. Schema loaded as: '{self.db_schema}'"
 
-            # --- Step 2: Execute the SQL Query ---
-            conn = sqlite3.connect(DB_FILE)
-            cursor = conn.cursor()
-            cursor.execute(generated_sql)
-            results = cursor.fetchall()
-            column_names = [description[0] for description in cursor.description]
-            conn.close()
-
-            # --- Step 3: Synthesize a Final Answer ---
-            synthesis_prompt = f"""
-            Given the original question: "{data.question}"
-            And the following data retrieved from the database:
-            ---
-            Columns: {column_names}
-            Results: {results}
-            ---
-            Please provide a clear, concise, natural language answer.
-            """
-            final_completion = client.chat.completions.create(
-                model="gpt-4o",
-                messages=[
-                    {"role": "system", "content": "You are a helpful assistant that summarizes database results into clear, natural language."},
-                    {"role": "user", "content": synthesis_prompt}
-                ]
-            )
-            return final_completion.choices[0].message.content.strip()
-
-        except Exception as e:
-            return f"An error occurred: {str(e)}"
+logging.info("app.py script definition finished. BentoML will now take over.")
