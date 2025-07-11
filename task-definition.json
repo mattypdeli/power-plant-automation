@@ -2,10 +2,11 @@
     "family": "power-plant-automation-task",
     "networkMode": "awsvpc",
     "executionRoleArn": "arn:aws:iam::804373361506:role/ecsTaskExecutionRole",
+    "taskRoleArn": "arn:aws:iam::804373361506:role/ecsTaskExecutionRole",
     "containerDefinitions": [
         {
             "name": "power-plant-container",
-            "image": "804373361506.dkr.ecr.us-east-1.amazonaws.com/power-plant-automation:xh3jymk6gw6myaaj",
+            "image": "804373361506.dkr.ecr.us-east-1.amazonaws.com/power-plant-automation:ixue3hk6jog5saaj",
             "portMappings": [
                 {
                     "containerPort": 3000,
