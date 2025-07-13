@@ -8,4 +8,5 @@ include:
 python:
   packages:
     - openai
+    - pydantic
     - numpy
